@@ -3,13 +3,14 @@
 #include <string.h>
 
 typedef struct sElement {
-  int chave;
+  char *chave;
+// prox elemento da fila
   struct sElement *prox;
 } element;
 
 typedef struct sFila {
-  element *front;
-  element *rear;
+  element *front;//inicio da fila
+  element *rear;//fim da fila
   int tamanho;
 } fila;
 
@@ -17,23 +18,19 @@ fila *criaFila();
 fila *destroiFila(fila *f);
 int empty(fila *f);
 int tamanhoFila(fila *f);
-int pqinsert(fila *f, int elemento);
-int pqmindelete(fila *f, int *elemento);
+int pqinsert(fila *f, const char *elemento);
+int pqmindelete(fila *f, char **elemento);
 void imprimeFila(fila *f);
 
 int main() {
   fila *f;
   int op;
-  int n;
-  int retirar = 0;
+  char buffer[100];
+  char *retirar = NULL;
 
   if (!(f = criaFila())) {
     printf("Erro na alocação de memória!");
-
     return 1;
-
-    free(f);
-    f = NULL;
   }
 
   do {
@@ -46,9 +43,9 @@ int main() {
     switch (op) {
     case 1:
       printf("Inserir elemento: ");
-      scanf("%d", &n);
+      scanf("%s", buffer);
 
-      if (!(pqinsert(f, n))) {
+      if (!(pqinsert(f, buffer))) {
         printf("Inserção falha!");
       }
       break;
@@ -57,7 +54,8 @@ int main() {
       if (!(pqmindelete(f, &retirar))) {
         printf("Fila vazia.\n");
       } else {
-        printf("\nElemento retirado: %d\n", retirar);
+        printf("\nElemento retirado: %s\n", retirar);
+        free(retirar);
       }
       break;
 
@@ -72,7 +70,7 @@ int main() {
     default:
       if (op != 0 || op != 1 || op != 2 || op != 3 || op != 4) {
         if (op == 0) {
-          printf("saindo....");
+          printf("Saindo....\n");
         } else {
           printf("\nNúmero fora do menu!\n");
         }
@@ -100,10 +98,13 @@ fila *criaFila() {
 
 fila *destroiFila(fila *f) {
   element *tmp1 = f->front;
-  element *tmp2 = f->front->prox;
+  element *tmp2 = f->front;
 
-  while ((tmp1 != NULL) && (tmp2 != NULL)) {
+  while (tmp1 != NULL) {
+    tmp2 = tmp1->prox;
+    free(tmp1->chave);
     free(tmp1);
+    tmp1 = tmp2;
   }
 
   free(f);
@@ -122,14 +123,14 @@ int empty(fila *f) {
 
 int tamanhoFila(fila *f) { return f->tamanho; }
 
-int pqinsert(fila *f, int elemento) {
+int pqinsert(fila *f, const char *elemento) {
   element *tmp;
 
   if ((tmp = malloc(sizeof(element))) == NULL) {
     return 0;
   }
 
-  tmp->chave = elemento;
+  tmp->chave = strdup(elemento);
   tmp->prox = NULL;
 
   if (empty(f)) {
@@ -144,19 +145,20 @@ int pqinsert(fila *f, int elemento) {
   return 1;
 }
 
-int pqmindelete(fila *f, int *elemento) {
-  element *tmp;
-  tmp = f->front;
+int pqmindelete(fila *f, char **elemento) {
+  element *tmp = f->front;
 
   if (empty(f)) {
     return 0;
   }
 
-  *elemento = f->front->chave;
+  *elemento = strdup(f->front->chave);
   f->front = f->front->prox;
 
+  free(tmp->chave);
   free(tmp);
   f->tamanho--;
+
   return 1;
 }
 
@@ -164,7 +166,7 @@ void imprimeFila(fila *f) {
   element *tmp = f->front;
 
   while (tmp != NULL) {
-    printf("%.d\t", tmp->chave);
+    printf("%s\t", tmp->chave);
     tmp = tmp->prox;
   }
 
