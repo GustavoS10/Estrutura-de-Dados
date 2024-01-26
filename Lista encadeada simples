@@ -1,3 +1,139 @@
+class HashLista:
+
+    def __init__(self, tamanho):
+        self.tamanho = tamanho
+        self.lista = [None] * tamanho
+
+    def inserir(self, chave, valor):
+        return inserir_nahash(self, chave, valor)
+
+    def remover(self, chave):
+        posicao = self.funcao_hash(chave)
+        if self.lista[posicao] is not None:
+            if chave == self.lista[posicao].chave:
+                # Se a chave for encontrada na primeira posição, basta sobrescrevê-la com None
+                self.lista[posicao] = None
+            else:
+                # Se a chave não for encontrada na primeira posição, precisamos percorrer a lista
+                anterior = self.lista[posicao]
+                atual = anterior.prox
+                while atual is not None:
+                    if chave == atual.chave:
+                        anterior.prox = atual.prox
+                        break
+                    anterior = atual
+                    atual = atual.prox
+
+    def funcao_hash(self, chave):
+        return chave % self.tamanho
+
+
+class HashItem:
+
+    def __init__(self, chave, valor):
+        self.chave = chave
+        self.valor = valor
+        self.prox = None
+
+
+def inserir_nahash(tabela, chave, valor):
+    # Calcula a posição do item na tabela hash
+    posicao = tabela.funcao_hash(chave)
+
+    # Cria um novo item para a tabela hash
+    novo = HashItem(chave, valor)
+
+    # Se a posição estiver vazia, insere o item diretamente
+    if tabela.lista[posicao] is None:
+        tabela.lista[posicao] = novo
+    else:
+        # Se a posição já estiver ocupada, encadeia o novo item na lista
+        anterior = tabela.lista[posicao]
+        atual = anterior.prox
+        while atual is not None:
+            anterior = atual
+            atual = atual.prox
+        anterior.prox = novo
+
+
+def buscar_nahash(tabela, chave):
+    posicao = tabela.funcao_hash(chave)
+    if tabela.lista[posicao] is None:
+        return None
+    if chave == tabela.lista[posicao].chave:
+        return tabela.lista[posicao].valor
+    anterior = tabela.lista[posicao]
+    atual = anterior.prox
+    while atual is not None:
+        if chave == atual.chave:
+            return atual.valor
+        anterior = atual
+        atual = atual.prox
+    return None
+
+
+if __name__ == "__main__":
+    # Cria uma tabela hash com tamanho 10
+    hash_tabela = HashLista(10)
+
+    # Insere alguns itens na tabela hash
+    hash_tabela.inserir(1, "um")
+    hash_tabela.inserir(2, "dois")
+    hash_tabela.inserir(3, "três")
+    hash_tabela.inserir(4, "quatro")
+
+    # Imprime a tabela hash
+    for item in hash_tabela.lista:
+        if item is not None:
+            print(item.chave, item.valor)
+
+    # Remove um item da tabela hash
+    hash_tabela.remover(2)
+
+    # Imprime a tabela hash novamente
+    for item in hash_tabela.lista:
+        if item is not None:
+            print(item.chave, item.valor)
+
+    # Busca um item na tabela hash
+    item = buscar_nahash(hash_tabela, 3)
+    print(item)
+
+
+
+==================================================================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
