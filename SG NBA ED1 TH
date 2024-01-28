@@ -1,0 +1,409 @@
+import tkinter as tk
+import sqlite3
+from tkinter import ttk
+from tkinter import messagebox
+from collections import deque
+
+class DatabaseManager:
+    def __init__(self, database_name='game_database.db'):
+        self.conn = sqlite3.connect(database_name)
+        self.create_tables()
+
+    def create_tables(self):
+        cursor = self.conn.cursor()
+
+        # Create tables if not exists
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                jogador TEXT,
+                cestas_2p INT,
+                cestas_3p INT,
+                faltas INT,
+                assistencias INT,
+                roubadas_bola INT,
+                tempo INTEGER
+            )
+        ''')
+
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS substitutions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                jogador_entra TEXT,
+                jogador_sai TEXT
+            )
+        ''')
+
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS statistics (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                jogador TEXT,
+                estatistica TEXT
+            )
+        ''')
+
+        self.conn.commit()
+
+    def insert_event(self, jogador, cestas_2p, cestas_3p, faltas, assistencias, roubadas_bola):
+        cursor = self.conn.cursor()
+        cursor.execute("INSERT INTO events (jogador, cestas_2p, cestas_3p, faltas, assistencias, roubadas_bola) VALUES (?, ?, ?, ?, ?, ?)", (jogador, cestas_2p, cestas_3p, faltas, assistencias, roubadas_bola))
+        self.conn.commit()
+
+    def insert_substitution(self, jogador_entra, jogador_sai):
+        cursor = self.conn.cursor()
+        cursor.execute("INSERT INTO substitutions (jogador_entra, jogador_sai) VALUES (?, ?)", (jogador_entra, jogador_sai))
+        self.conn.commit()
+
+    def insert_statistic(self, jogador, estatistica):
+        cursor = self.conn.cursor()
+        cursor.execute("INSERT INTO statistics (jogador, estatistica) VALUES (?, ?)", (jogador, estatistica))
+        self.conn.commit()
+
+    def update_event(self, jogador, caracteristica, novo_valor):
+        cursor = self.conn.cursor()
+
+        # Verificar se a característica fornecida é válida
+        if caracteristica not in ["cestas_2p", "cestas_3p", "faltas", "assistencias", "roubadas_bola"]:
+            print("Característica inválida.")
+            return
+
+        # Atualizar o valor da característica para o jogador especificado
+        cursor.execute(f"UPDATE events SET {caracteristica} = ? WHERE jogador = ?", (novo_valor, jogador))
+        self.conn.commit()
+
+
+class CaracteristicasJogador:
+    def __init__(self, jogador, cestas_2p, cestas_3p, faltas, assistencias, roubadas_bola):
+        self.jogador = jogador
+        self.cestas_2p = cestas_2p
+        self.cestas_3p = cestas_3p
+        self.faltas = faltas 
+        self.assistencias = assistencias
+        self.roubadas_bola = roubadas_bola 
+
+class Jogador:
+    def __init__(self, nome):
+        self.nome = nome
+        self.caracteristicas = None
+        self.proximo = None
+
+    def criar_copia(self):
+        novo_jogador = Jogador(self.nome)
+        novo_jogador.caracteristicas = self.caracteristicas
+        return novo_jogador
+    
+    def salvar_caracteristicas(self):
+        # Salva as características do jogador antes de sair da quadra
+        if self.caracteristicas:
+            return CaracteristicasJogador(
+                self.caracteristicas.cestas_2p,
+                self.caracteristicas.cestas_3p,
+                self.caracteristicas.faltas,
+                self.caracteristicas.assistencias,
+                self.caracteristicas.roubadas_bola
+            )
+        else:
+            return None
+        
+class ListaJogadores:
+    def __init__(self):
+        self.inicio = None
+
+    def adicionar_jogador(self, nome, cestas_2p, cestas_3p, faltas, assistencias, roubadas_bola):
+        novo_jogador = Jogador(nome)
+        database_manager = DatabaseManager()
+        database_manager.insert_event(nome, cestas_2p, cestas_3p, faltas, assistencias, roubadas_bola)
+        self.inserir_caracteristicas(
+            novo_jogador, 
+            cestas_2p, 
+            cestas_3p, 
+            faltas, 
+            assistencias, 
+            roubadas_bola
+        )
+        if not self.inicio:#verifica se ela esta vazia
+            self.inicio = novo_jogador #novo jogador se torna o primeiro
+        else:
+            temp = self.inicio
+            while temp.proximo:#caso haja populado, vai encontrando o proximo ate o final da lista
+                temp = temp.proximo
+            temp.proximo = novo_jogador
+
+    def inserir_caracteristicas(self, jogador, cestas_2p, cestas_3p, faltas, assistencias, roubadas_bola):
+        jogador.caracteristicas = CaracteristicasJogador(jogador.nome, cestas_2p, cestas_3p, faltas, assistencias, roubadas_bola)
+
+    def exibir_jogadores(self):
+        temp = self.inicio
+        while temp:
+            print(f"\nJogador: {temp.nome}")
+            print(f"Cestas de 2 pontos: {temp.caracteristicas.cestas_2p}")
+            print(f"Cestas de 3 pontos: {temp.caracteristicas.cestas_3p}")
+            print(f"Faltas: {temp.caracteristicas.faltas}")
+            print(f"Assistências: {temp.caracteristicas.assistencias}")
+            print(f"Roubadas de Bola: {temp.caracteristicas.roubadas_bola}")
+            temp = temp.proximo
+
+    def buscar_jogador(self, nome):
+        temp = self.inicio
+        while temp:
+            if temp.nome == nome:
+                return temp
+            temp = temp.proximo
+        return None
+
+    def alterar_caracteristica_jogador(self, nome, caracteristica, novo_valor):
+        jogador = self.buscar_jogador(nome)
+        if jogador:
+            if jogador.caracteristicas:  # Verificar se o jogador tem características
+                setattr(jogador.caracteristicas, caracteristica, novo_valor)
+                print(f"\nCaracterística '{caracteristica}' do jogador '{nome}' alterada para '{novo_valor}'.")
+            else:
+                print(f"O jogador '{nome}' não possui características.")
+        else:
+            print("Jogador não encontrado na lista.")
+
+class FilaSubstituicao:
+    def __init__(self):
+        self.fila = deque()
+    
+
+    def adicionar_jogador_fila(self, jogador):
+        # Verificar se o jogador tem características e, se não tiver, criar características zeradas
+        if not jogador.caracteristicas:
+            jogador.caracteristicas = CaracteristicasJogador(jogador.nome, 0, 0, 0, 0, 0)
+            self.fila.append(jogador.criar_copia())
+
+
+    def buscar_jogador_substituir(self, nome, lista_jogadores):
+        temp = lista_jogadores.inicio
+        while temp:
+            if temp.nome == nome:
+                return temp
+            temp = temp.proximo
+        return None
+
+    def substituir_jogador(self, nome_jogador_substituir, lista_jogadores):
+        if self.fila:
+            jogador_na_fila = self.fila.popleft()
+            jogador_substituir = self.buscar_jogador_substituir(nome_jogador_substituir, lista_jogadores)
+            if jogador_substituir:
+                # Armazenar informações do jogador a ser substituído
+                info_jogador_substituido = {
+                    "nome": jogador_substituir.nome,
+                    "caracteristicas":{
+                        "cestas_2p": jogador_substituir.caracteristicas.cestas_2p,
+                        "cestas_3p": jogador_substituir.caracteristicas.cestas_3p,
+                        "faltas": jogador_substituir.caracteristicas.faltas,
+                        "assistencias": jogador_substituir.caracteristicas.assistencias,
+                        "roubadas_bola": jogador_substituir.caracteristicas.roubadas_bola,
+                    } 
+                }
+                # Substituir pelo jogador da fila
+                jogador_substituir.nome = jogador_na_fila.nome
+                jogador_substituir.caracteristicas = jogador_na_fila.caracteristicas
+                DatabaseManager().insert_substitution(jogador_substituir.nome, info_jogador_substituido['nome'])
+                DatabaseManager().insert_event(jogador_substituir.nome, 0, 0, 0, 0, 0)
+                print(f"\nSubstituição realizada: {info_jogador_substituido['nome']} substituído por {jogador_substituir.nome}")
+            else:
+                print("Jogador não encontrado na lista.")
+        else:
+            print("Fila de substituição vazia.")
+
+    def get_nomes_jogadores_fila(self):
+        return [jogador.nome for jogador in self.fila]
+
+
+class PilhaEstatisticas:
+    def __init__(self):
+        self.pilha = deque()
+
+    def registrar_estatistica(self, jogador, estatistica):
+        self.pilha.append((jogador, estatistica))
+        #DatabaseManager().insert_statistic(jogador, estatistica)
+
+    def desfazer_ultima_estatistica(self):
+        if self.pilha:
+            jogador, estatistica = self.pilha.pop()
+            print(f"Desfazer: Última estatística de {jogador} ({estatistica}).")
+
+
+class InterfaceGrafica:
+    def __init__(self, lista_jogadores, fila_substituicao, pilha_estatistica):
+        self.lista_jogadores = lista_jogadores
+        self.fila_substituicao = fila_substituicao
+        self.pilha_estatistica = pilha_estatistica
+
+        self.root = tk.Tk()
+        self.root.title("Sistema de Substituição de Jogadores")
+
+        # Criar e configurar o Combobox (input de seleção)
+        self.combobox_jogadores_substituir = ttk.Combobox(self.root, values=self.get_nomes_jogadores())
+        self.combobox_jogadores_substituir.set("Selecione um jogador para substituir")
+        self.combobox_jogadores_substituir.pack(pady=10)
+
+        # Botão para realizar a substituição
+        self.botao_substituir = tk.Button(self.root, text="Substituir Jogador", command=self.realizar_substituicao)
+        self.botao_substituir.pack(pady=10)
+
+        # Adicionando novo Combobox para selecionar jogador para alterar característica
+        self.combobox_jogadores_alterar = ttk.Combobox(self.root, values=self.get_nomes_jogadores())
+        self.combobox_jogadores_alterar.set("Selecione um jogador para alterar característica")
+        self.combobox_jogadores_alterar.pack(pady=10)
+
+        # Adicionando novo Combobox para selecionar característica a ser alterada
+        self.combobox_caracteristicas = ttk.Combobox(self.root, values=["cestas_2p", "cestas_3p", "faltas", "assistencias", "roubadas_bola"])
+        self.combobox_caracteristicas.set("Selecione uma característica para alterar")
+        self.combobox_caracteristicas.pack(pady=10)
+
+        # Adicionando entrada de texto para o novo valor da característica
+        self.entry_novo_valor = tk.Entry(self.root)
+        self.entry_novo_valor.insert(0, "Digite o novo valor")
+        self.entry_novo_valor.pack(pady=10)
+
+        # Botão para realizar a alteração da característica
+        self.botao_alterar_caracteristica = tk.Button(self.root, text="Alterar Característica", command=self.alterar_caracteristica)
+        self.botao_alterar_caracteristica.pack(pady=10)
+
+        # Adicionando novo Combobox para selecionar jogador para alterar estatística
+        self.combobox_jogadores_estatistica = ttk.Combobox(self.root, values=self.get_nomes_jogadores())
+        self.combobox_jogadores_estatistica.set("Selecione um jogador para lhe atribuir uma estatística")
+        self.combobox_jogadores_estatistica.pack(pady=10)
+
+        # Adicionando entrada de texto para estatística
+        self.entry_Estatistica = tk.Entry(self.root)
+        self.entry_Estatistica.insert(0, "Digite a nova valor")
+        self.entry_Estatistica.pack(pady=10)
+
+        # Botão para realizar a alteração da estatística
+        self.botao_alterar_caracteristica = tk.Button(self.root, text="Registrar Característica", command=self.cadastrar_estatistica)
+        self.botao_alterar_caracteristica.pack(pady=10)
+
+        # Adicionando widgets para exibir estatísticas em tempo real
+        self.label_estatisticas = tk.Label(self.root, text="Estatísticas em Tempo Real:")
+        self.label_estatisticas.pack(pady=10)
+
+        self.text_estatisticas = tk.Text(self.root, height=20, width=100)
+        self.text_estatisticas.pack(pady=10)
+
+        # Atualizar as estatísticas iniciais
+        self.atualizar_estatisticas()
+
+    def atualizar_combobox(self):
+        # Atualizar as opções do Combobox com os nomes dos jogadores atuais
+        self.combobox_jogadores_substituir['values'] = self.get_nomes_jogadores()
+        self.combobox_jogadores_alterar['values'] = self.get_nomes_jogadores()
+        # Atualizar as opções do Combobox de estatísticas com os nomes consolidados
+        self.combobox_jogadores_estatistica['values'] = self.atualizar_combobox_estatisticas()
+
+
+    # Atualize o método na classe InterfaceGrafica
+    def atualizar_combobox_estatisticas(self):
+        # Obter os nomes dos jogadores da lista principal
+        nomes_jogadores_principal = self.get_nomes_jogadores()
+
+        # Obter os nomes dos jogadores da fila de substituição
+        nomes_jogadores_fila = FilaSubstituicao().get_nomes_jogadores_fila()
+
+        # Consolidar as listas
+        nomes_jogadores = nomes_jogadores_principal + nomes_jogadores_fila
+        return nomes_jogadores
+
+
+    def atualizar_estatisticas(self):
+        self.text_estatisticas.configure(state="normal")
+        # Limpar o texto atual
+        self.text_estatisticas.delete("1.0", tk.END)
+        # Coletar estatísticas dos jogadores e exibi-las
+        temp = self.lista_jogadores.inicio
+        while temp:
+            estatisticas_jogador = (
+                f"Jogador: {temp.nome}\n"
+                f"Cestas de 2 pontos: {temp.caracteristicas.cestas_2p if temp.caracteristicas else 0}\n"
+                f"Cestas de 3 pontos: {temp.caracteristicas.cestas_3p if temp.caracteristicas else 0}\n"
+                f"Faltas: {temp.caracteristicas.faltas if temp.caracteristicas else 0}\n"
+                f"Assistências: {temp.caracteristicas.assistencias if temp.caracteristicas else 0}\n"
+                f"Roubadas de Bola: {temp.caracteristicas.roubadas_bola if temp.caracteristicas else 0}\n\n"
+            )
+            self.text_estatisticas.insert(tk.END, estatisticas_jogador)
+            temp = temp.proximo
+            # Defina o estado do widget como "disabled" para torná-lo não editável
+        self.text_estatisticas.configure(state="disabled")
+
+    def get_nomes_jogadores(self):
+        # Retorna uma lista com os nomes dos jogadores na lista principal
+        temp = self.lista_jogadores.inicio
+        nomes_jogadores = []
+        while temp:
+            nomes_jogadores.append(temp.nome)
+            temp = temp.proximo
+        return nomes_jogadores
+
+    def realizar_substituicao(self):
+        jogador_substituir = self.combobox_jogadores_substituir.get()
+
+        if jogador_substituir != "Selecione um jogador para substituir":
+            jogador_a_substituir = self.fila_substituicao.buscar_jogador_substituir(jogador_substituir, self.lista_jogadores)
+            if jogador_a_substituir:
+                # Realizar a substituição
+                self.fila_substituicao.substituir_jogador(jogador_substituir, self.lista_jogadores)
+                self.atualizar_estatisticas()
+                # Atualizar os Combobox
+                self.atualizar_combobox()
+            else:
+                print("Jogador não encontrado na lista.")
+        else:
+            tk.messagebox.showinfo("Selecione um jogador", "Por favor, selecione um jogador para substituir.")
+
+    def alterar_caracteristica(self):
+        jogador_nome = self.combobox_jogadores_alterar.get()
+        caracteristica = self.combobox_caracteristicas.get()
+        novo_valor = self.entry_novo_valor.get()
+
+        if jogador_nome != "Selecione um jogador para alterar característica" and caracteristica != "Selecione uma característica para alterar" and novo_valor:
+            self.lista_jogadores.alterar_caracteristica_jogador(jogador_nome, caracteristica, novo_valor)
+            DatabaseManager().update_event(jogador_nome, caracteristica, novo_valor)
+            self.atualizar_estatisticas()
+        else:
+            tk.messagebox.showinfo("Entrada Inválida", "Por favor, selecione um jogador, uma característica e preencha o campo para alterar a característica.")
+
+    def cadastrar_estatistica(self):
+        jogador_nome = self.combobox_jogadores_estatistica.get()
+        nova_estatistica = self.entry_Estatistica.get()
+        
+        if jogador_nome != "Selecione um jogador para alterar estatística" and nova_estatistica != "Digite uma estatística para o jogador":
+            self.pilha_estatistica.registrar_estatistica(jogador_nome, nova_estatistica)
+            DatabaseManager().insert_statistic(jogador_nome, nova_estatistica)
+            #self.atualizar_estatisticas()
+        else:
+            tk.messagebox.showinfo("Entrada Inválida", "Por favor, selecione um jogador, uma característica e preencha o campo para alterar a característica.")
+
+    def run(self):
+        self.root.mainloop()
+
+# Função principal do programa
+def main():
+    lista_jogadores = ListaJogadores()
+    fila_substituicao = FilaSubstituicao()
+    pilha_estatistica = PilhaEstatisticas()
+    # Cadastrar jogadores
+    lista_jogadores.adicionar_jogador("Jogador1", 10, 5, 3, 7, 2)
+    lista_jogadores.adicionar_jogador("Jogador2", 8, 3, 5, 6, 4)
+    #lista_jogadores.adicionar_jogador("Jogador3", 12, 7, 2, 8, 1)
+
+    fila_substituicao.adicionar_jogador_fila(Jogador("Jogador4"))
+    fila_substituicao.adicionar_jogador_fila(Jogador("Jogador5"))
+    fila_substituicao.adicionar_jogador_fila(Jogador("Jogador6"))
+    fila_substituicao.adicionar_jogador_fila(Jogador("Jogador7"))
+
+    # Inicializar a interface gráfica
+    interface = InterfaceGrafica(lista_jogadores, fila_substituicao, pilha_estatistica)
+
+    # Exibir lista de jogadores com suas características
+    print("\nLista de Jogadores:")
+    lista_jogadores.exibir_jogadores()
+
+    # Executar a interface gráfica
+    interface.run()
+
+if __name__ == "__main__":
+    main()
