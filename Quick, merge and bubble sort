@@ -9,7 +9,7 @@ def quick_sort(arr):
 
     return quick_sort(left) + middle + quick_sort(right)
 
-# Exemplo de uso:
+
 arr_quick_sort = [3, 6, 8, 10, 1, 2, 1]
 sorted_arr_quick_sort = quick_sort(arr_quick_sort)
 print("Quick Sort:", sorted_arr_quick_sort)
@@ -30,8 +30,7 @@ def merge_sort(arr):
 def merge(left, right):
     result = []
     i = j = 0
-
-    while i < len(left) and j < len(right):
+n(left) and j < len(right):
         if left[i] < right[j]:
             result.append(left[i])
             i += 1
@@ -43,7 +42,7 @@ def merge(left, right):
     result.extend(right[j:])
     return result
 
-# Exemplo de uso:
+
 arr_merge_sort = [3, 6, 8, 10, 1, 2, 1]
 sorted_arr_merge_sort = merge_sort(arr_merge_sort)
 print("Merge Sort:", sorted_arr_merge_sort)
@@ -56,7 +55,6 @@ def bubble_sort(arr):
             if arr[j] > arr[j+1]:
                 arr[j], arr[j+1] = arr[j+1], arr[j]
 
-# Exemplo de uso:
 arr_bubble_sort = [3, 6, 8, 10, 1, 2, 1]
-bubble_sort(arr_bubble_sort)
+ubble_sort)
 print("Bubble Sort:", arr_bubble_sort)
