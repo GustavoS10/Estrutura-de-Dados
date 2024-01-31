@@ -1,0 +1,378 @@
+import tkinter as tk
+import db
+from tkinter import messagebox
+from tkinter.ttk import Combobox
+
+class PlayerNode:
+    def __init__(self, shirt_number, name, club, fouls, assists, league_quantity, points_quantity):
+        self.shirt_number = shirt_number
+        self.name = name
+        self.club = club
+        self.fouls = fouls
+        self.assists = assists
+        self.league_quantity = league_quantity
+        self.points_quantity = points_quantity
+        self.left = None
+        self.right = None
+
+def new_node(item):
+    shirt_number, name, club, fouls, assists, league_quantity, points_quantity = item
+    temp = PlayerNode(shirt_number, name, club, fouls, assists, league_quantity, points_quantity)
+    return temp
+
+def insert_node(root, player):
+    if root is None:
+        return new_node(player)
+
+    shirt_number, _, _, _, _, _, _ = player
+
+    if shirt_number < root.shirt_number:
+        root.left = insert_node(root.left, player)
+    else:
+        root.right = insert_node(root.right, player)
+
+    return root
+
+def print_tree(root, criterion=None, value=None):
+    if root is not None:
+        print_tree(root.left, criterion, value)
+
+        if criterion is None or getattr(root, criterion) == value:
+            print(f"[{root.shirt_number} - {root.name} - {root.club} - Faltas: {root.fouls} - Assistências: {root.assists} - Liga: {root.league_quantity} - Pontos: {root.points_quantity}]")
+
+        print_tree(root.right, criterion, value)
+
+def search_players_by_criteria(root, criteria):
+    result = []
+    _search_players_by_criteria(root, criteria, result)
+    return result
+
+def _search_players_by_criteria(node, criteria, result):
+    if node is not None:
+        _search_players_by_criteria(node.left, criteria, result)
+
+        match = True
+        for key, value in criteria.items():
+            if getattr(node, key) != value:
+                match = False
+                break
+
+        if match:
+            result.append(node)
+
+        _search_players_by_criteria(node.right, criteria, result)
+
+def delete_player(root, shirt_number):
+    if root is None:
+        return root, None
+
+    if shirt_number < root.shirt_number:
+        root.left, player_name = delete_player(root.left, shirt_number)
+    elif shirt_number > root.shirt_number:
+        root.right, player_name = delete_player(root.right, shirt_number)
+    else:
+        if root.left is None:
+            player_name = root.name
+            temp = root.right
+            del root
+            return temp, player_name
+        elif root.right is None:
+            player_name = root.name
+            temp = root.left
+            del root
+            return temp, player_name
+
+        temp = min_value_node(root.right)
+        root.shirt_number = temp.shirt_number
+        root.right, player_name = delete_player(root.right, temp.shirt_number)
+
+    return root, player_name
+
+def min_value_node(node):
+    current = node
+    while current.left is not None:
+        current = current.left
+    return current
+
+class PlayerManagementApp:
+    def __init__(self, master):
+        self.master = master
+        self.master.title("Gerenciador de Jogadores")
+
+        self.player_root = None
+
+        self.create_widgets()
+
+    def create_widgets(self):
+        # Labels e Entradas
+        self.shirt_number_label = tk.Label(self.master, text="Número da Camisa:")
+        self.shirt_number_label.grid(row=0, column=0, padx=5, pady=5)
+        self.shirt_number_entry = tk.Entry(self.master)
+        self.shirt_number_entry.grid(row=0, column=1, padx=5, pady=5)
+
+        self.name_label = tk.Label(self.master, text="Nome:")
+        self.name_label.grid(row=1, column=0, padx=5, pady=5)
+        self.name_entry = tk.Entry(self.master)
+        self.name_entry.grid(row=1, column=1, padx=5, pady=5)
+
+        self.club_label = tk.Label(self.master, text="Clube:")
+        self.club_label.grid(row=2, column=0, padx=5, pady=5)
+        self.club_entry = tk.Entry(self.master)
+        self.club_entry.grid(row=2, column=1, padx=5, pady=5)
+
+        self.fouls_label = tk.Label(self.master, text="Faltas:")
+        self.fouls_label.grid(row=3, column=0, padx=5, pady=5)
+        self.fouls_entry = tk.Entry(self.master)
+        self.fouls_entry.grid(row=3, column=1, padx=5, pady=5)
+
+        self.assists_label = tk.Label(self.master, text="Assistências:")
+        self.assists_label.grid(row=4, column=0, padx=5, pady=5)
+        self.assists_entry = tk.Entry(self.master)
+        self.assists_entry.grid(row=4, column=1, padx=5, pady=5)
+
+        self.league_quantity_label = tk.Label(self.master, text="Quantidade de Ligas:")
+        self.league_quantity_label.grid(row=5, column=0, padx=5, pady=5)
+        self.league_quantity_entry = tk.Entry(self.master)
+        self.league_quantity_entry.grid(row=5, column=1, padx=5, pady=5)
+
+        self.points_quantity_label = tk.Label(self.master, text="Quantidade de Pontos:")
+        self.points_quantity_label.grid(row=6, column=0, padx=5, pady=5)
+        self.points_quantity_entry = tk.Entry(self.master)
+        self.points_quantity_entry.grid(row=6, column=1, padx=5, pady=5)
+
+        # Botões
+        self.insert_button = tk.Button(self.master, text="Inserir Jogador", command=self.insert_player)
+        self.insert_button.grid(row=7, column=0, columnspan=2, pady=10)
+
+        self.search_button = tk.Button(self.master, text="Buscar Jogador", command=self.search_player)
+        self.search_button.grid(row=8, column=0, columnspan=2, pady=10)
+
+        self.delete_button = tk.Button(self.master, text="Excluir Jogador", command=self.delete_player_gui)
+        self.delete_button.grid(row=9, column=0, columnspan=2, pady=10)
+
+        self.tree_display = tk.Text(self.master, height=10, width=50)
+        self.tree_display.grid(row=10, column=0, columnspan=2, pady=10)
+
+        # Combobox para escolher um jogador
+        self.choose_player_label = tk.Label(self.master, text="Escolha um Jogador:")
+        self.choose_player_label.grid(row=12, column=0, padx=5, pady=5)
+
+        self.players_combobox = Combobox(self.master, values=[])
+        self.players_combobox.grid(row=12, column=1, padx=5, pady=5)
+        self.players_combobox.bind("<<ComboboxSelected>>", self.update_player_stats)
+
+        # Botão para confirmar alterações
+        self.confirm_changes_button = tk.Button(self.master, text="Confirmar Alterações", command=self.confirm_changes)
+        self.confirm_changes_button.grid(row=13, column=0, columnspan=2, pady=10)
+
+        # Botão para limpar inputs
+        self.clear_inputs_button = tk.Button(self.master, text="Limpar campos de entrada", command=self.clear_inputs)
+        self.clear_inputs_button.grid(row=14, column=0, columnspan=2, pady=10)
+
+        self.display_tree()
+
+    def clear_inputs(self):
+        # Limpa todos os campos de entrada na interface
+        self.shirt_number_entry.delete(0, tk.END)
+        self.name_entry.delete(0, tk.END)
+        self.club_entry.delete(0, tk.END)
+        self.fouls_entry.delete(0, tk.END)
+        self.assists_entry.delete(0, tk.END)
+        self.league_quantity_entry.delete(0, tk.END)
+        self.points_quantity_entry.delete(0, tk.END)
+
+    def insert_player(self):
+        try:
+            conn = db.connect_to_database()
+            shirt_number = int(self.shirt_number_entry.get())
+            name = self.name_entry.get()
+            club = self.club_entry.get()
+            fouls = int(self.fouls_entry.get())
+            assists = int(self.assists_entry.get())
+            league_quantity = int(self.league_quantity_entry.get())
+            points_quantity = int(self.points_quantity_entry.get())
+
+            player_data = (shirt_number, name, club, fouls, assists, league_quantity, points_quantity)
+            self.player_root = insert_node(self.player_root, player_data)
+            self.display_tree()
+            messagebox.showinfo("Inserção de Jogador", "Jogador inserido com sucesso!")
+            db.insert_into_database(conn, player_data)
+        except ValueError:
+            messagebox.showerror("Erro", "Por favor, insira valores numéricos para Faltas, Assistências, Quantidade de Ligas e Quantidade de Pontos.")
+        self.clear_inputs()
+
+    def search_player(self):
+        try:
+            # Obtemos os valores dos campos de entrada
+            shirt_number_str = self.shirt_number_entry.get()
+            name_str = self.name_entry.get().strip()
+            club_str = self.club_entry.get().strip()
+            fouls_str = self.fouls_entry.get()
+            assists_str = self.assists_entry.get()
+            league_quantity_str = self.league_quantity_entry.get()
+            points_quantity_str = self.points_quantity_entry.get()
+
+            # Cria um dicionário para armazenar os critérios e valores não vazios
+            criteria_values = {
+                "shirt_number": int(shirt_number_str) if shirt_number_str else None,
+                "name": name_str if name_str else None,
+                "club": club_str if club_str else None,
+                "fouls": int(fouls_str) if fouls_str else None,
+                "assists": int(assists_str) if assists_str else None,
+                "league_quantity": int(league_quantity_str) if league_quantity_str else None,
+                "points_quantity": int(points_quantity_str) if points_quantity_str else None,
+            }
+
+            # Remove pares chave-valor com valor None do dicionário
+            criteria_values = {key: value for key, value in criteria_values.items() if value is not None}
+
+            # Realiza a busca e obtém os jogadores encontrados
+            found_players = search_players_by_criteria(self.player_root, criteria=criteria_values)
+
+            if found_players:
+                # Exibe os jogadores encontrados
+                message = "Jogador(s) encontrado(s):\n"
+                for found_player in found_players:
+                    message += f"{found_player.name} - {found_player.club} - Número da camisa: {found_player.shirt_number}\n"
+            else:
+                message = "Nenhum jogador encontrado com os critérios fornecidos."
+
+            # Exibe a mensagem de resultado da busca
+            messagebox.showinfo("Resultado da Busca", message)
+
+            # Limpa os inputs após a busca
+            self.clear_inputs()
+
+        except ValueError as e:
+            messagebox.showerror("Erro", str(e))
+
+    def delete_player_gui(self):
+        try:
+            shirt_number_to_delete = int(self.shirt_number_entry.get())
+            self.player_root, player_name = delete_player(self.player_root, shirt_number_to_delete)
+
+            if player_name is not None:
+                messagebox.showinfo("Exclusão de Jogador", f"Jogador '{player_name}' removido.")
+            else:
+                messagebox.showinfo("Exclusão de Jogador", f"Jogador com número da camisa {shirt_number_to_delete} não encontrado. Nenhum jogador removido.")
+
+            self.display_tree()
+
+        except ValueError:
+            messagebox.showerror("Erro", "Por favor, insira um valor numérico para o Número da Camisa.")
+        self.clear_inputs()
+
+    def display_tree(self):
+        self.tree_display.delete(1.0, tk.END)
+        self.tree_display.insert(tk.END, "Árvore de Jogadores:\n")
+        print_tree_gui(self.player_root, self.tree_display)
+
+        # Atualiza os jogadores no Combobox ao exibir a árvore
+        player_list = self.get_players_list(self.player_root)
+        self.players_combobox["values"] = player_list
+
+    def get_players_list(self, root):
+        players_list = []
+        self._get_players_list(root, players_list)
+        return players_list
+
+    def _get_players_list(self, root, players_list):
+        if root is not None:
+            self._get_players_list(root.left, players_list)
+            players_list.append(root.name)
+            self._get_players_list(root.right, players_list)
+
+    def update_player_stats(self, event):
+        selected_player_name = self.players_combobox.get()
+        if selected_player_name:
+            selected_player = self.find_player_by_name(self.player_root, selected_player_name)
+            if selected_player:
+                self.shirt_number_entry.delete(0, tk.END)
+                self.shirt_number_entry.insert(tk.END, str(selected_player.shirt_number))
+
+                self.name_entry.delete(0, tk.END)
+                self.name_entry.insert(tk.END, selected_player.name)
+
+                self.club_entry.delete(0, tk.END)
+                self.club_entry.insert(tk.END, selected_player.club)
+
+                self.fouls_entry.delete(0, tk.END)
+                self.fouls_entry.insert(tk.END, str(selected_player.fouls))
+
+                self.assists_entry.delete(0, tk.END)
+                self.assists_entry.insert(tk.END, str(selected_player.assists))
+
+                self.league_quantity_entry.delete(0, tk.END)
+                self.league_quantity_entry.insert(tk.END, str(selected_player.league_quantity))
+
+                self.points_quantity_entry.delete(0, tk.END)
+                self.points_quantity_entry.insert(tk.END, str(selected_player.points_quantity))
+
+
+    def confirm_changes(self):
+        selected_player_name = self.players_combobox.get()
+        if selected_player_name:
+            selected_player = self.find_player_by_name(self.player_root, selected_player_name)
+            if selected_player:
+                try:
+                    # Atualiza as estatísticas do jogador com os valores dos campos de entrada
+                    selected_player.shirt_number = int(self.shirt_number_entry.get())
+                    selected_player.name = self.name_entry.get()
+                    selected_player.club = self.club_entry.get()
+                    selected_player.fouls = int(self.fouls_entry.get())
+                    selected_player.assists = int(self.assists_entry.get())
+                    selected_player.league_quantity = int(self.league_quantity_entry.get())
+                    selected_player.points_quantity = int(self.points_quantity_entry.get())
+
+                    # Exibe a árvore atualizada
+                    self.display_tree()
+                    player_stats = (
+                        selected_player.shirt_number,
+                        selected_player.name,
+                        selected_player.club,
+                        selected_player.fouls,
+                        selected_player.assists,
+                        selected_player.league_quantity,
+                        selected_player.points_quantity
+                    )
+                    messagebox.showinfo("Alterações Confirmadas", "Alterações no jogador foram confirmadas com sucesso!")
+                    db.update_player_in_database(db.connect_to_database(), player_stats)
+
+                except ValueError:
+                    messagebox.showerror("Erro", "Por favor, insira valores numéricos válidos para as estatísticas do jogador.")
+        else:
+            messagebox.showinfo("Nenhum Jogador Selecionado", "Selecione um jogador no Combobox antes de confirmar as alterações.")
+
+        self.clear_inputs()
+
+    def find_player_by_name(self, root, name):
+        return self._find_player_by_name(root, name)
+
+    def _find_player_by_name(self, root, name):
+        if root is not None:
+            left_result = self._find_player_by_name(root.left, name)
+            if left_result:
+                return left_result
+
+            if root.name == name:
+                return root
+
+            right_result = self._find_player_by_name(root.right, name)
+            if right_result:
+                return right_result
+
+        return None
+
+def print_tree_gui(root, text_widget):
+    if root is not None:
+        print_tree_gui(root.left, text_widget)
+
+        player_info = f"{root.name} - {root.club} - Número da camisa: {root.shirt_number}\n"
+        text_widget.insert(tk.END, player_info)
+
+        print_tree_gui(root.right, text_widget)
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = PlayerManagementApp(root)
+    root.mainloop()
