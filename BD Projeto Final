@@ -1,0 +1,42 @@
+import sqlite3
+
+def create_players_table(conn):
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS players (
+            shirt_number INTEGER PRIMARY KEY,
+            name TEXT,
+            club TEXT,
+            fouls INTEGER,
+            assists INTEGER,
+            league_quantity INTEGER,
+            points_quantity INTEGER
+        )
+    ''')
+    conn.commit()
+
+def update_player_in_database(conn, player_data):
+    cursor = conn.cursor()
+    cursor.execute('''
+        UPDATE players
+        SET name=?, club=?, fouls=?, assists=?, league_quantity=?, points_quantity=?
+        WHERE shirt_number=?
+    ''', player_data[1:] + (player_data[0],))
+    conn.commit()
+
+
+def insert_into_database(conn, player_data):
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO players VALUES (?, ?, ?, ?, ?, ?, ?)
+    ''', player_data)
+    conn.commit()
+
+def connect_to_database():
+    conn = sqlite3.connect('players.db')
+    create_players_table(conn)
+    return conn
+
+def close_database_connection(conn):
+    conn.close()
+
